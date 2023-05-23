@@ -6,7 +6,7 @@ export const getEmployees = async (req, res) => {
   res.send(rows);
 };
 
-// Read 1 employe functionality
+// Read 1 employee functionality
 export const get1Employee = async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM employees WHERE id = ?", [
     req.params.id,
@@ -23,7 +23,7 @@ export const get1Employee = async (req, res) => {
   //   `<h1 style="
   //       color: blue; text-align: center; padding-block: 45vh;
   //     ">
-  //       Obtaning employee id: ${rows[0].id}
+  //       Obtaining employee id: ${rows[0].id}
   //   </h1>`
   // );
 };
@@ -35,7 +35,7 @@ export const createEmployee = async (req, res) => {
     "INSERT INTO employees(name, salary) VALUES (?, ?)",
     [name, salary]
   );
-  // it goes inside cursly brackets so it can be returned as a json
+  // It goes inside curly brackets so it can be returned as a json
   res.send({
     id: rows.insertId,
     name,
@@ -45,4 +45,21 @@ export const createEmployee = async (req, res) => {
 
 export const updateEmployee = (req, res) => res.send("updating employees");
 
-export const deleteEmployee = (req, res) => res.send("deleting employees");
+export const deleteEmployee = async (req, res) => {
+  console.log(req.params.id);
+
+  const [result] = await pool.query("DELETE FROM employees WHERE id = ?", [
+    req.params.id,
+  ]);
+
+  console.log(result.affectedRows);
+  if (result.affectedRows <= 0)
+    return res.status(404).json({
+      message: "Employee not found",
+    });
+
+  // res.send("Employee deleted successfully");
+
+  /* Successful request, but without any content in the response body */
+  res.sendStatus(204);
+};
