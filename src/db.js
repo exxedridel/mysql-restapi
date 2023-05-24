@@ -8,5 +8,5 @@ export const pool = createPool({
   database: "companydb",
 });
 
-/*being called with */
+/* Called with */
  // pool.query()

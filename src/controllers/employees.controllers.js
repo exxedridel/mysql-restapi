@@ -1,12 +1,12 @@
 import { pool } from "../db.js";
 
-// Read employee functionality
+/* Read employees functionality */
 export const getEmployees = async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM employees");
   res.send(rows);
 };
 
-// Read 1 employee functionality
+/* Read 1 employee functionality */
 export const get1Employee = async (req, res) => {
   const [rows] = await pool.query("SELECT * FROM employees WHERE id = ?", [
     req.params.id,
@@ -28,14 +28,15 @@ export const get1Employee = async (req, res) => {
   // );
 };
 
-// Create employee functionality
+/* Create employee functionality */
 export const createEmployee = async (req, res) => {
   const { name, salary } = req.body;
   const [rows] = await pool.query(
     "INSERT INTO employees(name, salary) VALUES (?, ?)",
     [name, salary]
   );
-  // It goes inside curly brackets so it can be returned as a json
+
+  /* This approach only returns the entered data not the actual row created in database */
   res.send({
     id: rows.insertId,
     name,
@@ -43,8 +44,24 @@ export const createEmployee = async (req, res) => {
   });
 };
 
-export const updateEmployee = (req, res) => res.send("updating employees");
+/* Patch employee functionality (to partially update the data) */
+export const updateEmployee = async (req, res) => {
+  const { id } = req.params;
+  const { name, salary } = req.body;
+  const [result] = await pool.query(
+    "UPDATE employees SET name = IFNULL(?, name), salary = IFNULL(?, salary)  WHERE id = ?",
+    [name, salary, id]
+  );
 
+  if (result.affectedRows <= 0)
+    return res.status(404).send({ message: "Employee not found" });
+
+  /* This approach returns the actual row edited in the database */
+  const [rows] = await pool.query("SELECT * FROM employees WHERE id = ?", [id]);
+  res.json(rows[0]);
+};
+
+/* Delete employee functionality */
 export const deleteEmployee = async (req, res) => {
   console.log(req.params.id);
 
@@ -52,7 +69,6 @@ export const deleteEmployee = async (req, res) => {
     req.params.id,
   ]);
 
-  console.log(result.affectedRows);
   if (result.affectedRows <= 0)
     return res.status(404).json({
       message: "Employee not found",
