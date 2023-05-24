@@ -1,6 +1,9 @@
-import { pool } from "../db.js";
-
 export const ping = async (req, res) => {
-  const [result] = await pool.query("SELECT 1 + 1 AS result");
-  res.json(result[0]);
+  res.send(
+    `
+      <h1 style="color: blue; text-align: center; padding-block: 45vh;">
+        Pong
+      </h1>
+    `
+  );
 };
