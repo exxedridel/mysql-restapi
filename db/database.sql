@@ -1,3 +1,4 @@
+/* - - - - - - - - - - table employees - - - - - - - - - - - */
 CREATE DATABASE IF NOT EXISTS companydb;
 
 USE companydb;
@@ -16,3 +17,15 @@ INSERT INTO employees VALUES
  (2, 'Henry', 2000),
  (3, 'Sam', 2500),
  (4, 'Max', 1500);
+
+ /* - - - - - - - - - - table tasks - - - - - - - - - - - - - */
+ 
+ CREATE TABLE tasks (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(200) NOT NULL,
+    description VARCHAR(300),
+    done BOOLEAN NOT NULL DEFAULT 0,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO tasks(title, description) VALUES ('Amazing tasks', 'Do de tasks asap');
