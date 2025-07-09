@@ -39,7 +39,7 @@ export async function initDatabase() {
       const email1 = "hevedrios@gmail.com";
       const email2 = "najerad2223@gmail.com";
       const password = "D1An43vD";
-      const hashedPassword = await bcrypt.hash(password1, 10);
+      const hashedPassword = await bcrypt.hash(password, 10);
 
       await pool.query(
         "INSERT INTO users (email, password) VALUES (?, ?)",
