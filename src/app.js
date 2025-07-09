@@ -6,7 +6,7 @@ import express from "express";
 import cors from "cors";
 
 import indexRoutes from "./routes/index.routes.js";
-import employeesRoutes from "./routes/employees.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 import tasksRoutes from "./routes/tasks.routes.js";
 
 const app = express();
@@ -15,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api", indexRoutes);
-app.use("/api", employeesRoutes);
+app.use("/api", authRoutes);
 app.use("/api", tasksRoutes);
 
 /* Middleware function to handle not found, but default is better*/
