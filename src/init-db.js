@@ -11,7 +11,7 @@ export async function initDatabase() {
         id INTEGER PRIMARY KEY AUTO_INCREMENT,
         title VARCHAR(200) NOT NULL,
         description VARCHAR(300),
-        done BOOLEAN NOT NULL DEFAULT 0,
+        isDone BOOLEAN NOT NULL DEFAULT 0,
         createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -30,27 +30,36 @@ export async function initDatabase() {
       CREATE TABLE IF NOT EXISTS users (
         id INT PRIMARY KEY AUTO_INCREMENT,
         email VARCHAR(100) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL
+        password VARCHAR(255) NOT NULL,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) NOT NULL
       );
     `);
 
     const [userRows] = await pool.query("SELECT COUNT(*) AS total FROM users");
     if (userRows[0].total === 0) {
       const email1 = "hevedrios@gmail.com";
+      const password1 = "Qwe123@9";
+      const hashedPassword1 = await bcrypt.hash(password1, 10);
+      const first_name1 = "Heved";
+      const last_name1 = "Ríos";
+      
       const email2 = "najerad2223@gmail.com";
-      const password = "D1An43vD";
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const password2 = "Diana123";
+      const hashedPassword2 = await bcrypt.hash(password2, 10);
+      const first_name2 = "Diana";
+      const last_name2 = "Nájera";
 
       await pool.query(
-        "INSERT INTO users (email, password) VALUES (?, ?)",
-        [email1, hashedPassword]
+        "INSERT INTO users (email, password, first_name, last_name) VALUES (?, ?, ?, ?)",
+        [email1, hashedPassword1, first_name1, last_name1]
       );
       await pool.query(
-        "INSERT INTO users (email, password) VALUES (?, ?)",
-        [email2, hashedPassword]
+        "INSERT INTO users (email, password, first_name, last_name) VALUES (?, ?, ?, ?)",
+        [email2, hashedPassword2, first_name2, last_name2]
       );
 
-      console.log(`✅ Usuarios creados: ${email1} y ${email2} / pass: ${password}`);
+      console.log(`✅ Usuarios creados: ${email1} y ${email2}`);
     } else {
       console.log("✅ Tabla 'users' ya tiene registros");
     }
