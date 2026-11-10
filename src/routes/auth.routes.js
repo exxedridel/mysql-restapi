@@ -1,30 +1,27 @@
 import { Router } from "express";
-import { pool } from "../db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { asyncRoute, HttpError } from "../lib/http-error.js";
+import { validateLogin } from "../lib/user-validation.js";
+import { publicUser } from "../lib/users.js";
 
-const router = Router();
-
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-
-  if (rows.length === 0)
-    return res.status(401).json({ message: "Credenciales inválidas" });
-
-  const user = rows[0];
-
-  const passwordMatch = await bcrypt.compare(password, user.password);
-
-  if (!passwordMatch)
-    return res.status(401).json({ message: "Credenciales inválidas" });
-
-  const token = jwt.sign({ id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name }, process.env.JWT_SECRET, {
-    expiresIn: "12h",
-  });
-
-  res.json({ token });
-});
-
-export default router;
+export function createAuthRouter({ usersRepository, jwtSecret, authenticate }) {
+  const router = Router();
+  router.post("/login", asyncRoute(async (req, res) => {
+    const input = validateLogin(req.body);
+    const row = await usersRepository.findByEmail(input.email);
+    if (!row || !(await bcrypt.compare(input.password, row.password))) {
+      throw new HttpError(401, "Credenciales inválidas.", "INVALID_CREDENTIALS");
+    }
+    const user = publicUser(row);
+    const token = jwt.sign({ ...user, tokenVersion: Number(row.token_version) }, jwtSecret, {
+      algorithm: "HS256",
+      expiresIn: "12h",
+    });
+    res.json({ token, user });
+  }));
+  router.get("/auth/me", authenticate, (req, res) => res.json({ user: req.user }));
+  // Local logout does not revoke other sessions.
+  router.post("/logout", authenticate, (_req, res) => res.sendStatus(204));
+  return router;
+}

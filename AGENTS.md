@@ -9,7 +9,11 @@ Acuerdo del usuario confirmado el 2026-11-08:
 
 Si esta disponible, leer [la memoria compartida](../PROJECT_MEMORY.md). Este resumen se conserva tambien aqui para sesiones que abran solo este repositorio.
 
-Evaluar este servicio como proveedor de autenticacion para toda la trilogia. La implementacion actual no redefine el reparto acordado. Las mejoras de roles, verificacion entre servicios y sesiones descritas en la memoria son propuestas pendientes de implementacion, no funcionalidades existentes ni nuevos requisitos confirmados.
+Este servicio es la autoridad de identidad. Etapa autorizada 2026-11-10:
+CRUD admin `/api/users`, perfil `/api/auth/me`, contactos y roles player/admin.
+Migracion aditiva al arrancar; admin inicial asignado una sola vez. Cambiar
+correo, password o rol revoca tokens previos; la autorizacion consulta MySQL.
+No afirmar que el despliegue o la migracion Railway ya fueron verificados.
 
 No guardar credenciales o tokens en la documentacion. Actualizar el contexto cuando el usuario confirme nuevos acuerdos.
 
