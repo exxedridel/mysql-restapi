@@ -35,6 +35,23 @@ export class MysqlUsersRepository {
     await this.database.query("DELETE FROM users WHERE id = ?", [id]);
   }
 
+  async isTokenRevoked(tokenHash) {
+    const [rows] = await this.database.query(
+      "SELECT 1 FROM revoked_tokens WHERE token_hash = ? AND expires_at > UNIX_TIMESTAMP() LIMIT 1",
+      [tokenHash],
+    );
+    return rows.length > 0;
+  }
+
+  async revokeToken(tokenHash, expiresAt) {
+    await this.database.query("DELETE FROM revoked_tokens WHERE expires_at <= UNIX_TIMESTAMP()");
+    const expiration = Math.ceil(expiresAt);
+    await this.database.query(
+      "INSERT INTO revoked_tokens (token_hash, expires_at) VALUES (?, ?) ON DUPLICATE KEY UPDATE expires_at = GREATEST(expires_at, ?)",
+      [tokenHash, expiration, expiration],
+    );
+  }
+
   async transaction(callback) {
     if (this.transactionConnection) return callback(this);
     const connection = await this.database.getConnection();

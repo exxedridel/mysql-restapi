@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { createApp } from "../src/app.js";
 import { MemoryUsersRepository } from "./support/memory-users.repository.js";
+import { hashToken } from "../src/lib/sessions.js";
 
 const SECRET = "users-http-test-only-secret-not-a-deployment-credential";
 const PASSWORD = "Testing-password-123";
@@ -80,8 +81,79 @@ describe("Users identity API over real HTTP with an isolated repository", () => 
     assert.ok(!Object.hasOwn(decoded, "password"));
     const me = await request("/auth/me", { token });
     assert.deepEqual(me, { status: 200, body: { user } });
-    assert.equal((await request("/logout", { token, method: "POST" })).status, 204);
+  });
+
+  it("revokes only the current session, including independent logins in the same second", async () => {
+    const actualNow = Date.now;
+    const issuedAt = Math.floor(actualNow() / 1000);
+    let first;
+    let second;
+    try {
+      Date.now = () => issuedAt * 1000;
+      first = await login();
+      second = await login();
+    } finally {
+      Date.now = actualNow;
+    }
+    const firstClaims = jwt.verify(first.token, SECRET);
+    const secondClaims = jwt.verify(second.token, SECRET);
+    assert.equal(firstClaims.iat, issuedAt);
+    assert.equal(secondClaims.iat, issuedAt);
+    assert.match(firstClaims.jti, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    assert.notEqual(firstClaims.jti, secondClaims.jti);
+    assert.notEqual(first.token, second.token);
+    assert.equal((await request("/logout", { token: first.token, method: "POST" })).status, 204);
+    for (const path of ["/auth/me", "/users/contacts", "/users"]) {
+      const response = await request(path, { token: first.token });
+      assert.equal(response.status, 401);
+      assert.equal(response.body.code, "SESSION_REVOKED");
+    }
+    assert.equal((await request("/logout", { token: first.token, method: "POST" })).status, 401);
+    assert.equal((await request("/auth/me", { token: second.token })).status, 200);
+    const fresh = await login();
+    assert.notEqual(fresh.token, first.token);
+    assert.equal((await request("/auth/me", { token: fresh.token })).status, 200);
+    assert.equal((await repository.findById(1)).token_version, 0);
+  });
+
+  it("revokes legacy tokens without jti by hash and stores neither the token nor its claims", async () => {
+    const legacy = jwt.sign({ id: 2, email: PLAYER, first_name: "Legacy" }, SECRET, { expiresIn: 60 });
+    const second = await login(PLAYER);
+    assert.equal((await request("/auth/me", { token: legacy })).status, 200);
+    repository.revokedTokens.set("expired-fixture", 1);
+    assert.equal((await request("/logout", { token: legacy, method: "POST" })).status, 204);
+    assert.equal((await request("/auth/me", { token: legacy })).status, 401);
+    assert.equal((await request("/auth/me", { token: second.token })).status, 200);
+    assert.equal(repository.revokedTokens.has("expired-fixture"), false);
+    assert.deepEqual([...repository.revokedTokens.keys()], [hashToken(legacy)]);
+    assert.match([...repository.revokedTokens.keys()][0], /^[0-9a-f]{64}$/);
+    assert.equal([...repository.revokedTokens.values()][0], jwt.decode(legacy).exp);
+    assert.equal(JSON.stringify([...repository.revokedTokens]).includes(legacy), false);
+  });
+
+  it("keeps revocation in the repository when the HTTP app is recreated", async () => {
+    const first = await login();
+    const second = await login();
+    await request("/logout", { token: first.token, method: "POST" });
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+    const app = createApp({ usersRepository: repository, jwtSecret: SECRET });
+    server = await new Promise((resolve) => {
+      const listening = app.listen(0, "127.0.0.1", () => resolve(listening));
+    });
+    baseUrl = `http://127.0.0.1:${server.address().port}`;
+    assert.equal((await request("/auth/me", { token: first.token })).status, 401);
+    assert.equal((await request("/auth/me", { token: second.token })).status, 200);
+  });
+
+  it("does not acknowledge logout or authorize requests if the revocation store fails", async () => {
+    const { token } = await login();
+    repository.revokeToken = async () => { throw new Error("Private database failure"); };
+    const result = await request("/logout", { token, method: "POST" });
+    assert.deepEqual(result, { status: 500, body: { message: "No se pudo completar la solicitud.", code: "INTERNAL_ERROR" } });
     assert.equal((await request("/auth/me", { token })).status, 200);
+    repository.isTokenRevoked = async () => { throw new Error("Private database failure"); };
+    assert.equal((await request("/auth/me", { token })).status, 500);
   });
 
   it("rejects missing, forged, unsigned, expired and malformed sessions", async () => {

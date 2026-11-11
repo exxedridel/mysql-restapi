@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { migrateUserIdentity } from "./migrations/users-identity.js";
+import { migrateSessionRevocations } from "./migrations/session-revocations.js";
 
 export async function initDatabase(database) {
   const connection = await database.getConnection();
@@ -31,6 +32,7 @@ export async function initDatabase(database) {
       ) ENGINE=InnoDB
     `);
     await migrateUserIdentity(connection);
+    await migrateSessionRevocations(connection);
     const [taskRows] = await connection.query("SELECT COUNT(*) AS total FROM tasks");
     if (Number(taskRows[0].total) === 0) {
       await connection.query("INSERT INTO tasks (title, description) VALUES (?, ?)", ["Amazing tasks", "Do de tasks asap"]);

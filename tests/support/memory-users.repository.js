@@ -6,6 +6,7 @@ export class MemoryUsersRepository {
     }]));
     this.nextId = Math.max(0, ...this.rows.keys()) + 1;
     this.queue = Promise.resolve();
+    this.revokedTokens = new Map();
   }
 
   async findById(id) {
@@ -40,6 +41,17 @@ export class MemoryUsersRepository {
 
   async delete(id) {
     this.rows.delete(Number(id));
+  }
+
+  async isTokenRevoked(tokenHash) {
+    return (this.revokedTokens.get(tokenHash) ?? 0) > Date.now() / 1000;
+  }
+
+  async revokeToken(tokenHash, expiresAt) {
+    for (const [hash, expiration] of this.revokedTokens) {
+      if (expiration <= Date.now() / 1000) this.revokedTokens.delete(hash);
+    }
+    this.revokedTokens.set(tokenHash, Math.max(this.revokedTokens.get(tokenHash) ?? 0, Math.ceil(expiresAt)));
   }
 
   async transaction(callback) {
